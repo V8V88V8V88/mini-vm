@@ -1,9 +1,7 @@
 mod cpu;
 mod instruction;
-mod memory;
-mod stack;
+pub mod memory;
+mod trap;
 
 pub use cpu::CPU;
-pub use instruction::Instruction;
-pub use memory::Memory;
-pub use stack::Stack;
+pub use instruction::Opcode;

@@ -1,45 +1,92 @@
-#[derive(Debug, Clone, Copy)]
-pub enum Instruction {
-    Load(usize, u32),
-    Store(usize, usize),
-    Add(usize, usize, usize),
-    Sub(usize, usize, usize),
-    Mul(usize, usize, usize),
-    Div(usize, usize, usize),
-    Jump(u32),
-    JumpIfZero(u32),
-    JumpIfNegative(u32),
-    Push(usize),
-    Pop(usize),
-    Call(u32),
-    Return,
-    Halt,
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u8)]
+pub enum Opcode {
+    Nop = 0x00,
+    Halt = 0x01,
+    Push = 0x02,
+    Pop = 0x03,
+    Dup = 0x04,
+    Swap = 0x05,
+    Load = 0x10,
+    Store = 0x11,
+    Add = 0x20,
+    Sub = 0x21,
+    Mul = 0x22,
+    Div = 0x23,
+    Mod = 0x24,
+    And = 0x25,
+    Or = 0x26,
+    Not = 0x27,
+    Eq = 0x30,
+    Lt = 0x31,
+    Gt = 0x32,
+    Jmp = 0x40,
+    Jz = 0x41,
+    Jnz = 0x42,
+    Call = 0x50,
+    Ret = 0x51,
+    Trap = 0x60,
 }
 
-impl From<u32> for Instruction {
-    fn from(value: u32) -> Self {
-        let opcode = (value >> 28) & 0xF;
-        let reg1 = ((value >> 24) & 0xF) as usize;
-        let reg2 = ((value >> 20) & 0xF) as usize;
-        let reg3 = ((value >> 16) & 0xF) as usize;
-        let immediate = value & 0xFFFF;
+impl Opcode {
+    pub fn from_byte(byte: u8) -> Option<Self> {
+        match byte {
+            0x00 => Some(Opcode::Nop),
+            0x01 => Some(Opcode::Halt),
+            0x02 => Some(Opcode::Push),
+            0x03 => Some(Opcode::Pop),
+            0x04 => Some(Opcode::Dup),
+            0x05 => Some(Opcode::Swap),
+            0x10 => Some(Opcode::Load),
+            0x11 => Some(Opcode::Store),
+            0x20 => Some(Opcode::Add),
+            0x21 => Some(Opcode::Sub),
+            0x22 => Some(Opcode::Mul),
+            0x23 => Some(Opcode::Div),
+            0x24 => Some(Opcode::Mod),
+            0x25 => Some(Opcode::And),
+            0x26 => Some(Opcode::Or),
+            0x27 => Some(Opcode::Not),
+            0x30 => Some(Opcode::Eq),
+            0x31 => Some(Opcode::Lt),
+            0x32 => Some(Opcode::Gt),
+            0x40 => Some(Opcode::Jmp),
+            0x41 => Some(Opcode::Jz),
+            0x42 => Some(Opcode::Jnz),
+            0x50 => Some(Opcode::Call),
+            0x51 => Some(Opcode::Ret),
+            0x60 => Some(Opcode::Trap),
+            _ => None,
+        }
+    }
 
-        match opcode {
-            0 => Instruction::Load(reg1, immediate),
-            1 => Instruction::Store(reg1, immediate as usize),
-            2 => Instruction::Add(reg1, reg2, reg3),
-            3 => Instruction::Sub(reg1, reg2, reg3),
-            4 => Instruction::Mul(reg1, reg2, reg3),
-            5 => Instruction::Div(reg1, reg2, reg3),
-            6 => Instruction::Jump(immediate),
-            7 => Instruction::JumpIfZero(immediate),
-            8 => Instruction::JumpIfNegative(immediate),
-            9 => Instruction::Push(reg1),
-            10 => Instruction::Pop(reg1),
-            11 => Instruction::Call(immediate),
-            12 => Instruction::Return,
-            15 => Instruction::Halt,
-            _ => panic!("Invalid instruction"),
+    pub fn name(&self) -> &'static str {
+        match self {
+            Opcode::Nop => "nop",
+            Opcode::Halt => "halt",
+            Opcode::Push => "push",
+            Opcode::Pop => "pop",
+            Opcode::Dup => "dup",
+            Opcode::Swap => "swap",
+            Opcode::Load => "load",
+            Opcode::Store => "store",
+            Opcode::Add => "add",
+            Opcode::Sub => "sub",
+            Opcode::Mul => "mul",
+            Opcode::Div => "div",
+            Opcode::Mod => "mod",
+            Opcode::And => "and",
+            Opcode::Or => "or",
+            Opcode::Not => "not",
+            Opcode::Eq => "eq",
+            Opcode::Lt => "lt",
+            Opcode::Gt => "gt",
+            Opcode::Jmp => "jmp",
+            Opcode::Jz => "jz",
+            Opcode::Jnz => "jnz",
+            Opcode::Call => "call",
+            Opcode::Ret => "ret",
+            Opcode::Trap => "trap",
         }
     }
 }

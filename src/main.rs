@@ -1,51 +1,126 @@
-mod tui;
+mod asm;
+mod debugger;
+mod disasm;
 mod vm;
 
-use std::{thread, time::Duration};
-use tui::TUI;
-use vm::{Instruction, CPU};
+use std::env;
+use std::fs;
+use std::io::{self, Write};
+use std::process;
 
-fn main() -> std::io::Result<()> {
-    let mut cpu = CPU::new(1024);
+use asm::Assembler;
+use debugger::Debugger;
+use disasm::disassemble_program;
+use vm::CPU;
 
-    let program = [
-        0x00000001, // Load R0, 1
-        0x01000002, // Load R1, 2
-        0x20000001, // Add R0, R0, R1
-        0x30100000, // Sub R1, R1, R0
-        0x70000009, // JumpIfZero 9
-        0x40000001, // Mul R0, R0, R1
-        0x50100000, // Div R1, R1, R0
-        0x60000004, // Jump 4
-        0x90000000, // Push R0
-        0xA0000001, // Pop R1
-        0xB000000E, // Call 14
-        0xF0000000, // Halt
-        0x00000000, // Nop (padding)
-        0x00000000, // Nop (padding)
-        0x00000005, // Load R0, 5
-        0xC0000000, // Return
-    ];
+fn main() {
+    let args: Vec<String> = env::args().collect();
 
-    cpu.get_memory().load_program(&program);
+    if args.len() < 2 {
+        print_usage();
+        process::exit(1);
+    }
 
-    loop {
-        TUI::display(&cpu)?;
-
-        if cpu.get_pc() >= program.len() {
-            break;
+    let result = match args[1].as_str() {
+        "run" => cmd_run(&args[2..]),
+        "asm" => cmd_asm(&args[2..]),
+        "disasm" => cmd_disasm(&args[2..]),
+        "debug" => cmd_debug(&args[2..]),
+        "help" | "--help" | "-h" => {
+            print_usage();
+            Ok(())
         }
+        _ => {
+            eprintln!("unknown command: {}", args[1]);
+            print_usage();
+            process::exit(1);
+        }
+    };
 
-        let instruction = cpu.fetch();
-        let decoded = cpu.decode(instruction);
-        cpu.execute(decoded);
+    if let Err(e) = result {
+        eprintln!("error: {}", e);
+        process::exit(1);
+    }
+}
 
-        thread::sleep(Duration::from_millis(500));
+fn print_usage() {
+    eprintln!("mini-vm - a stack-based virtual machine\n");
+    eprintln!("usage:");
+    eprintln!("  mini-vm run <file.bin>       run a binary program");
+    eprintln!("  mini-vm asm <file.asm> [-o out.bin]  assemble program");
+    eprintln!("  mini-vm disasm <file.bin>    disassemble binary");
+    eprintln!("  mini-vm debug <file.bin>     interactive debugger");
+    eprintln!("  mini-vm help                 show this message");
+}
+
+fn cmd_run(args: &[String]) -> Result<(), String> {
+    if args.is_empty() {
+        return Err("usage: mini-vm run <file.bin>".into());
+    }
+
+    let program = fs::read(&args[0])
+        .map_err(|e| format!("failed to read '{}': {}", args[0], e))?;
+
+    let mut cpu = CPU::new();
+    cpu.load_program(&program);
+    cpu.run();
+
+    Ok(())
+}
+
+fn cmd_asm(args: &[String]) -> Result<(), String> {
+    if args.is_empty() {
+        return Err("usage: mini-vm asm <file.asm> [-o output.bin]".into());
+    }
+
+    let source = fs::read_to_string(&args[0])
+        .map_err(|e| format!("failed to read '{}': {}", args[0], e))?;
+
+    let mut assembler = Assembler::new();
+    let bytecode = assembler.assemble(&source)?;
+
+    let output_file = if args.len() >= 3 && args[1] == "-o" {
+        Some(args[2].as_str())
+    } else {
+        None
+    };
+
+    if let Some(path) = output_file {
+        fs::write(path, &bytecode)
+            .map_err(|e| format!("failed to write '{}': {}", path, e))?;
+        eprintln!("assembled {} bytes -> {}", bytecode.len(), path);
+    } else {
+        io::stdout().write_all(&bytecode)
+            .map_err(|e| format!("failed to write: {}", e))?;
     }
 
     Ok(())
 }
 
-pub fn get_memory(&self) -> &Memory {
-    &mut self.memory
+fn cmd_disasm(args: &[String]) -> Result<(), String> {
+    if args.is_empty() {
+        return Err("usage: mini-vm disasm <file.bin>".into());
+    }
+
+    let program = fs::read(&args[0])
+        .map_err(|e| format!("failed to read '{}': {}", args[0], e))?;
+
+    let output = disassemble_program(&program);
+    print!("{}", output);
+
+    Ok(())
+}
+
+fn cmd_debug(args: &[String]) -> Result<(), String> {
+    if args.is_empty() {
+        return Err("usage: mini-vm debug <file.bin>".into());
+    }
+
+    let program = fs::read(&args[0])
+        .map_err(|e| format!("failed to read '{}': {}", args[0], e))?;
+
+    let mut debugger = Debugger::new(program);
+    debugger.run();
+
+    Ok(())
 }

@@ -1,88 +1,133 @@
-# 🖥️ Mini Virtual Machine
+# Mini VM
 
-This project implements a mini virtual machine (VM) written in Rust. It's like having a tiny computer that fits in your terminal!
+A stack-based virtual machine with assembler, disassembler, and debugger.
 
-```mermaid
-graph TD
-    A[You] -->|Run| B(Mini VM)
-    B -->|Shows| C{Colorful TUI}
-    C -->|Blue| D[Registers]
-    C -->|Green| E[Memory]
-    C -->|Yellow| F[Stack]
-    C -->|Red| G[Current Instruction]
-    B -->|Has| H[8 Registers]
-    B -->|Has| I[1024 Bytes Memory]
-    B -->|Does| J[Arithmetic Ops]
-    B -->|Does| K[Branching]
-    B -->|Does| L[Function Calls]
+## Building
+
+```
+cargo build --release
 ```
 
-## 🚀 Features
+## Usage
 
-- Basic instruction set including load, store, arithmetic operations, and branching
-- 8 general-purpose registers
-- 1024 bytes of simulated memory
-- Stack support for function calls and local storage
-- Colorful TUI displaying registers, memory, stack, and current instruction
-- Example program demonstrating VM capabilities
+### Assemble
 
-## 🛠️ Prerequisites
-
-- Rust programming language (latest stable version)
-- Cargo package manager
-
-## 🏗️ Building and Running
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/v8v88v8v88/mini-vm.git
-   cd mini-vm
-   ```
-2. Build the project:
-   ```
-   cargo build --release
-   ```
-3. Run the VM with the example program:
-   ```
-   cargo run --release
-   ```
-
-## 📚 Instruction Set
-
-The VM supports a variety of instructions, including:
-
-- `Load(reg, value)`: Load a value into a register
-- `Store(reg, address)`: Store a value from a register into memory
-- `Add(dest, src1, src2)`: Add values from two registers
-- `Sub(dest, src1, src2)`: Subtract values from two registers
-- `Mul(dest, src1, src2)`: Multiply values from two registers
-- `Div(dest, src1, src2)`: Divide values from two registers
-- `Jump(address)`: Jump to a specific address
-- `JumpIfZero(address)`: Conditional jump if flag is zero
-- `JumpIfNegative(address)`: Conditional jump if flag is negative
-- `Push(reg)`: Push a value onto the stack
-- `Pop(reg)`: Pop a value from the stack
-- `Call(address)`: Call a function
-- `Return`: Return from a function call
-- `Halt`: Stop the VM execution
-
-## 🖊️ Writing Programs for the VM
-
-To write a program, create an array of 32-bit unsigned integers. Each instruction is encoded as:
-
-- Bits 31-28: Opcode
-- Bits 27-24: Register 1
-- Bits 23-20: Register 2
-- Bits 19-16: Register 3
-- Bits 15-0: Immediate value or address
-
-Example:
-```rust
-0x00000005 // Load R0, 5
+```
+mini-vm asm program.asm -o program.bin
 ```
 
-Check `src/vm/instruction.rs` for the complete list of opcodes and their encodings.
+### Run
 
-## 🤝 Contributing
+```
+mini-vm run program.bin
+```
 
-Contributions are welcome! Feel free to submit a Pull Request.
+### Disassemble
+
+```
+mini-vm disasm program.bin
+```
+
+### Debug
+
+```
+mini-vm debug program.bin
+```
+
+## Debugger Commands
+
+| Command | Description |
+|---------|-------------|
+| s, step | step one instruction |
+| n, next [N] | step N instructions |
+| r, run, c | run until breakpoint or halt |
+| b, break ADDR | set breakpoint |
+| d, delete [ADDR] | delete breakpoint |
+| bl, breaklist | list breakpoints |
+| m, memory [ADDR] [LEN] | show memory hexdump |
+| w, watch ADDR | watch memory address |
+| uw, unwatch [ADDR] | remove watch |
+| x, examine ADDR | show 64-bit value at address |
+| dis [ADDR] [N] | disassemble N instructions |
+| st, stack | show stack contents |
+| reg, state | show current state |
+| reset | reset VM |
+| q, quit | exit |
+
+Addresses can be decimal or hex (0x prefix). Press enter to repeat last command.
+
+## Instruction Set
+
+### Stack Operations
+| Opcode | Instruction | Description |
+|--------|-------------|-------------|
+| 0x00 | nop | no operation |
+| 0x01 | halt | stop execution |
+| 0x02 | push N | push value onto stack |
+| 0x03 | pop | discard top of stack |
+| 0x04 | dup | duplicate top of stack |
+| 0x05 | swap | swap top two values |
+
+### Memory
+| Opcode | Instruction | Description |
+|--------|-------------|-------------|
+| 0x10 | load | pop addr, push mem[addr] |
+| 0x11 | store | pop addr, pop val, mem[addr] = val |
+
+### Arithmetic
+| Opcode | Instruction | Description |
+|--------|-------------|-------------|
+| 0x20 | add | pop b, pop a, push a+b |
+| 0x21 | sub | pop b, pop a, push a-b |
+| 0x22 | mul | pop b, pop a, push a*b |
+| 0x23 | div | pop b, pop a, push a/b |
+| 0x24 | mod | pop b, pop a, push a%b |
+| 0x25 | and | bitwise and |
+| 0x26 | or | bitwise or |
+| 0x27 | not | bitwise not |
+
+### Comparison
+| Opcode | Instruction | Description |
+|--------|-------------|-------------|
+| 0x30 | eq | push 1 if a==b else 0 |
+| 0x31 | lt | push 1 if a<b else 0 |
+| 0x32 | gt | push 1 if a>b else 0 |
+
+### Control Flow
+| Opcode | Instruction | Description |
+|--------|-------------|-------------|
+| 0x40 | jmp ADDR | jump to address |
+| 0x41 | jz ADDR | jump if top is zero |
+| 0x42 | jnz ADDR | jump if top is not zero |
+| 0x50 | call ADDR | call subroutine |
+| 0x51 | ret | return from subroutine |
+
+### I/O (Traps)
+| Instruction | Description |
+|-------------|-------------|
+| putc | print top of stack as char |
+| getc | read char, push to stack |
+| puts | print string at address |
+| putu | print as unsigned integer |
+| puti | print as signed integer |
+
+## Assembly Syntax
+
+```asm
+; comments start with semicolon
+
+label:          ; labels end with colon
+    push 10     ; instructions with operands
+    add         ; instructions without operands
+    jmp label   ; jump to label
+    halt
+```
+
+## Examples
+
+See the `examples/` directory:
+
+- `hello.asm` - hello world
+- `math.asm` - arithmetic operations
+- `loop.asm` - counting loop
+- `functions.asm` - function calls
